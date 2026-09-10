@@ -106,6 +106,27 @@ Ridge's central spine was lowered from 300 px to 195 px and Guadal Spires' pilla
 were cut from seven tall columns to five short ones; both maps were running 20+
 turns at expert level purely because rounds could not clear the terrain.
 
+### Added after the spec: a practice opponent
+
+The spec assumed two humans. A solo player had nowhere to learn, so `js/ai.js`
+adds a computer gunner at four levels.
+
+| Level | Skill | Mean wind misjudgement | Player (fixed middling ability) wins |
+|---|---|---|---|
+| RECRUIT | 0.30 | 0.254 | 78% |
+| GUNNER | 0.55 | 0.156 | 56% |
+| VETERAN | 0.76 | 0.082 | 17% |
+| ACE | 0.92 | 0.029 | 17%, and roughly three turns faster |
+
+The AI runs the same `resolveShot` and `simulate` the player does. The design
+point worth recording: scaling raw aim noise produced a bad ladder, because an
+exact ballistic solution with jitter on it is still a good shot, and a RECRUIT
+came out playing like a GUNNER. The fix was to have it solve against the wind it
+*believes* is blowing. Reading the wind is the central skill of this game, so
+that is where difficulty belongs - and a recruit who misjudges a gale and lands
+two hundred pixels downwind reads as a bad gunner rather than as noise. The
+monotonic wind-error ladder is CI-enforced.
+
 ### Also not built as specced
 
 - **Terrain does collapse.** The spec froze overhangs as a tactical feature.
