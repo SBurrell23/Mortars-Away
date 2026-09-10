@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mortars Away</title>
+<meta name="description" content="A two-player artillery duel. Every shell is a different weight, the wind never sits still, and the ground remembers every hit.">
+<meta name="theme-color" content="#12110d">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%2312110d'/%3E%3Crect x='3' y='9' width='10' height='2' fill='%23e2c45a'/%3E%3Crect x='5' y='5' width='2' height='5' fill='%239aa4ae'/%3E%3Crect x='9' y='3' width='2' height='2' fill='%23c9502f'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<div id="app">
+  <canvas id="stage" aria-label="Battlefield"></canvas>
+
+  <!-- ------------------------------------------------------- title -->
+  <section class="screen" id="screen-title" data-screen="title">
+    <div class="plate plate-wide">
+      <h1 class="wordmark">MORTARS<span>AWAY</span></h1>
+      <p class="tagline">Every shell weighs something different. The wind never sits still.<br>
+        The ground remembers every round you put into it.</p>
+
+      <label class="field">
+        <span>GUNNER NAME</span>
+        <input id="name-input" maxlength="14" autocomplete="off" spellcheck="false" placeholder="GUNNER">
+      </label>
+
+      <div class="menu">
+        <button class="btn btn-primary" id="btn-host">HOST A BATTLE</button>
+        <button class="btn" id="btn-join">JOIN A BATTLE</button>
+        <button class="btn" id="btn-local">LOCAL DUEL</button>
+        <button class="btn btn-quiet" id="btn-howto">HOW TO PLAY</button>
+        <button class="btn btn-quiet" id="btn-options">OPTIONS</button>
+      </div>
+      <p class="footnote">Two players, one battlefield, direct peer-to-peer. Nothing is stored on a server.</p>
+    </div>
+  </section>
+
+  <!-- -------------------------------------------------------- join -->
+  <section class="screen hidden" id="screen-join" data-screen="join">
+    <div class="plate">
+      <h2>JOIN A BATTLE</h2>
+      <p class="sub">Ask the host for their five-character room code.</p>
+      <input id="code-input" class="code-input" maxlength="5" autocomplete="off"
+             spellcheck="false" placeholder="-----" aria-label="Room code">
+      <p class="error" id="join-error"></p>
+      <div class="menu row">
+        <button class="btn btn-primary" id="btn-connect">CONNECT</button>
+        <button class="btn btn-quiet" id="btn-join-back">BACK</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------- lobby -->
+  <section class="screen hidden" id="screen-lobby" data-screen="lobby">
+    <div class="plate plate-wide">
+      <h2 id="lobby-title">STAGING AREA</h2>
+
+      <div class="lobby-head">
+        <div class="roomcode-wrap" id="roomcode-wrap">
+          <span class="roomcode-label">ROOM CODE</span>
+          <span class="roomcode" id="roomcode">-----</span>
+          <button class="btn btn-tiny" id="btn-copy">COPY LINK</button>
+        </div>
+        <div class="roster">
+          <div class="slot" id="slot-0"><span class="pip pip-allied"></span><span class="slot-name">-</span><span class="slot-role">ALLIED</span></div>
+          <div class="slot" id="slot-1"><span class="pip pip-axis"></span><span class="slot-name">waiting...</span><span class="slot-role">AXIS</span></div>
+        </div>
+      </div>
+
+      <h3 class="section-label">CHOOSE THE GROUND</h3>
+      <div class="map-grid" id="map-grid"></div>
+
+      <div class="map-detail" id="map-detail">
+        <h4 id="map-detail-name">-</h4>
+        <p id="map-detail-desc"></p>
+        <p class="gimmick" id="map-detail-gimmick"></p>
+        <div class="map-stats" id="map-detail-stats"></div>
+      </div>
+
+      <p class="status" id="lobby-status">Waiting for an opponent to join.</p>
+      <div class="menu row">
+        <button class="btn btn-primary" id="btn-start" disabled>OPEN FIRE</button>
+        <button class="btn btn-quiet" id="btn-lobby-leave">LEAVE</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------ how to -->
+  <section class="screen hidden" id="screen-howto" data-screen="howto">
+    <div class="plate plate-wide scrollable">
+      <h2>HOW TO PLAY</h2>
+
+      <div class="howto-grid">
+        <div>
+          <h3 class="section-label">THE TURN</h3>
+          <ol class="steps">
+            <li>A shell is rolled for you. Its weight changes everything.</li>
+            <li>Read the wind at the top of the screen.</li>
+            <li>Set elevation with <kbd>W</kbd> / <kbd>S</kbd> and charge with <kbd>A</kbd> / <kbd>D</kbd>.</li>
+            <li>Press <kbd>SPACE</kbd> to start loading, then work the three stages.</li>
+            <li>The round goes wherever your hands sent it.</li>
+          </ol>
+
+          <h3 class="section-label">THE THREE STAGES</h3>
+          <dl class="stages">
+            <dt>RAM THE CHARGE</dt>
+            <dd>Hammer <kbd>SPACE</kbd>. More strokes means more propellant, which means more range. A fumbled ram costs about a fifth of your charge.</dd>
+            <dt>LAY THE TUBE</dt>
+            <dd>Stop the marker on the centre mark. Off-centre throws your elevation by up to eight degrees.</dd>
+            <dt>SET THE FUSE</dt>
+            <dd>Freeze the pulsing ring on the sight ring. A tight fuse bursts the shell as it passes near the enemy instead of sailing on.</dd>
+          </dl>
+        </div>
+
+        <div>
+          <h3 class="section-label">WEIGHT IS THE WHOLE GAME</h3>
+          <p>Light shells fly furthest and hit hardest at the exact centre of the blast, but their lethal radius is tiny and the wind throws them around.</p>
+          <p>Heavy shells barely cross a wide field and cap out lower, but their blast forgives a sloppy round and the wind hardly touches them.</p>
+          <p>You do not choose which one you get. You choose what to do with it.</p>
+
+          <h3 class="section-label">ANGLE IS A TRADE</h3>
+          <p>Forty-five degrees squeezes the most range out of a charge and is the angle where a shaky tube costs you least. It is also the slowest shot on the board, so it hands the wind the most time to work.</p>
+          <p>A flat, fast round beats the wind and punishes a bad elevation lock. Pick your poison.</p>
+
+          <h3 class="section-label">THE GROUND</h3>
+          <p>Every round takes a bite out of the map. Undercut a shelf and the whole overhang comes down. If the ground under a gun goes, so does the gun, and the fall hurts.</p>
+        </div>
+      </div>
+
+      <div class="menu row">
+        <button class="btn btn-primary" id="btn-howto-back">BACK</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------- options -->
+  <section class="screen hidden" id="screen-options" data-screen="options">
+    <div class="plate">
+      <h2>OPTIONS</h2>
+      <label class="field">
+        <span>EFFECTS VOLUME <b id="lbl-sfx">85</b></span>
+        <input type="range" id="vol-sfx" min="0" max="100" value="85">
+      </label>
+      <label class="field">
+        <span>MUSIC VOLUME <b id="lbl-music">42</b></span>
+        <input type="range" id="vol-music" min="0" max="100" value="42">
+      </label>
+      <label class="check">
+        <input type="checkbox" id="opt-shake" checked>
+        <span>SCREEN SHAKE</span>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="opt-scanlines" checked>
+        <span>SCANLINES</span>
+      </label>
+      <div class="menu row">
+        <button class="btn btn-primary" id="btn-options-back">BACK</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------- results -->
+  <section class="screen hidden" id="screen-results" data-screen="results">
+    <div class="plate">
+      <h2 id="result-title">AFTER ACTION</h2>
+      <p class="sub" id="result-sub"></p>
+      <div class="stat-grid" id="result-stats"></div>
+      <div class="menu row">
+        <button class="btn btn-primary" id="btn-rematch">REMATCH</button>
+        <button class="btn btn-quiet" id="btn-leave">LEAVE</button>
+      </div>
+      <p class="status" id="result-status"></p>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------ in-game -->
+  <div class="hud-corner hidden" id="hud-corner">
+    <span id="hud-ping">--</span>
+    <button class="btn btn-tiny" id="btn-quit">QUIT</button>
+  </div>
+
+  <div class="overlay hidden" id="overlay">
+    <div class="overlay-inner">
+      <p id="overlay-text">Reconnecting...</p>
+      <button class="btn btn-tiny hidden" id="overlay-btn">LEAVE</button>
+    </div>
+  </div>
+
+  <div class="boot" id="boot"><span>MUSTERING</span></div>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
