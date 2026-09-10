@@ -8,6 +8,7 @@ import { Effects } from './effects.js';
 import { Game, ST } from './game.js';
 import { Net, LocalNet, PROTOCOL_VERSION } from './net.js';
 import { MAPS, mapById, WORLD_W, WORLD_H } from './maps.js';
+import { gameFingerprint } from './fingerprint.js';
 import { randomSeed } from './rng.js';
 import * as sfx from './audio.js';
 
@@ -187,7 +188,17 @@ function updateRoster() {
 
 function sendLobbyState() {
   if (!app.net || app.net.local || !app.isHost) return;
-  app.net.send({ t: 'lobby', mapId: app.selectedMap, hostName: app.myName });
+  app.net.send({
+    t: 'lobby', mapId: app.selectedMap, hostName: app.myName,
+    v: PROTOCOL_VERSION, fp: gameFingerprint(),
+  });
+}
+
+function showVersionMismatch() {
+  overlay(
+    'You and your opponent are running different builds of the game. '
+    + 'Both players should reload the page (Ctrl+Shift+R) and try again.',
+    'LEAVE', leaveMatch);
 }
 
 // -------------------------------------------------------------- match
@@ -298,8 +309,11 @@ function wireNet(net) {
 function onNetMessage(msg) {
   switch (msg.t) {
     case 'hello':
-      if (msg.v !== PROTOCOL_VERSION) {
-        overlay('Version mismatch. Both players need to reload the page.', 'LEAVE', leaveMatch);
+      if (msg.v !== PROTOCOL_VERSION || (msg.fp && msg.fp !== gameFingerprint())) {
+        // One side is running stale cached modules. Refuse rather than start a
+        // match that would drift apart shot by shot.
+        app.net.send({ t: 'versionmismatch' });
+        showVersionMismatch();
         return;
       }
       app.peerName = (msg.name || 'ENEMY').toUpperCase();
@@ -312,9 +326,18 @@ function onNetMessage(msg) {
       break;
 
     case 'lobby':
+      if (msg.v !== undefined && (msg.v !== PROTOCOL_VERSION
+          || (msg.fp && msg.fp !== gameFingerprint()))) {
+        showVersionMismatch();
+        return;
+      }
       app.peerName = (msg.hostName || app.peerName || 'HOST').toUpperCase();
       updateRoster();
       selectMap(msg.mapId, false);
+      break;
+
+    case 'versionmismatch':
+      showVersionMismatch();
       break;
 
     case 'start':
@@ -620,7 +643,7 @@ function wireUi() {
     try {
       await net.join(code);
       app.isHost = false;
-      net.send({ t: 'hello', name: app.myName, v: PROTOCOL_VERSION });
+      net.send({ t: 'hello', name: app.myName, v: PROTOCOL_VERSION, fp: gameFingerprint() });
       enterLobby(false, code);
     } catch (err) {
       $('join-error').textContent = err.message;

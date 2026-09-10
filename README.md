@@ -111,6 +111,16 @@ The host publishes a terrain checksum at the start of every turn. If a guest
 disagrees it asks for and receives a full run-length-encoded terrain snapshot,
 so a match recovers rather than quietly drifting apart.
 
+There is one failure mode a checksum cannot fix, and the game refuses to start
+rather than walk into it. Because the game ships as plain ES modules with no
+build step and GitHub Pages caches them for a few minutes, a returning player
+can end up with a fresh `index.html` running against a stale `physics.js`. Both
+sides would believe they agree while their trajectories differed in the third
+decimal place. So the handshake exchanges a fingerprint hashed from the actual
+loaded *source text* of the functions and tables that decide a shot - not a
+hand-maintained version constant, which would be useless precisely when the
+module holding it is the stale one. Mismatched builds get told to reload.
+
 There is also a **LOCAL DUEL** mode for two people at one keyboard.
 
 ---
