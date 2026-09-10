@@ -174,6 +174,7 @@ js/
   art-env.js        pixel art: scenery, sky, HUD icons, terrain tiles
   pixelart.js       turns sprite data into canvases
   rng.js            seeded PRNG shared by both peers
+  fingerprint.js    build fingerprint, so mismatched peers refuse to start
 tools/
   verify.mjs        pre-deploy checks
   playtest.mjs      headless balance harness
