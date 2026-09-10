@@ -19,6 +19,7 @@ export const PHYS = {
 export const HIT_TERRAIN = 'terrain';
 export const HIT_UNIT = 'unit';
 export const HIT_AIRBURST = 'airburst';
+export const HIT_WATER = 'water';
 export const OUT_OF_BOUNDS = 'oob';
 export const TIMED_OUT = 'timeout';
 
@@ -29,7 +30,7 @@ export const TIMED_OUT = 'timeout';
  *   windDrift  multiplier on wind acceleration for this shell's mass
  *   fuseArm    seconds before proximity fuse becomes live; <=0 disables it
  *   fuseRadius proximity trigger distance in px
- * world: { width, height, wind, solidAt(x,y), targets: [{x,y,r,id}] }
+ * world: { width, height, wind, waterY, solidAt(x,y), targets: [{x,y,r,id}] }
  *
  * Returns { path: Float32Array of x,y pairs, steps, outcome, x, y, vx, vy,
  *           targetId, flightTime }
@@ -133,6 +134,12 @@ export function simulate(shot, world) {
       if (py >= 0 && world.solidAt(px, py)) {
         x = px; y = py; outcome = HIT_TERRAIN; hit = true; break;
       }
+
+      // On maps with open water the sea stops the round where it meets it,
+      // rather than letting it sail on down off the bottom of the world.
+      if (world.waterY && py >= world.waterY) {
+        x = px; y = world.waterY; outcome = HIT_WATER; hit = true; break;
+      }
     }
 
     if (hit) { step++; break; }
@@ -183,6 +190,7 @@ export function previewPath(shot, world, maxSeconds) {
     x += vx * dt;
     y += vy * dt;
     pts.push(x, y);
+    if (world.waterY && y >= world.waterY) break;
     if (x < -40 || x > world.width + 40 || y > world.height + 20) break;
   }
   return pts;

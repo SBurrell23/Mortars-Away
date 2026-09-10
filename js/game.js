@@ -322,6 +322,7 @@ export class Game {
       width: WORLD_W,
       height: WORLD_H,
       wind: this.wind,
+      waterY: this.map.water || 0,
       solidAt: (x, y) => this.terrain.solidAt(x, y),
       targets: [{
         x: enemy.x, y: enemy.y - 16, r: UNIT_HIT_RADIUS, id: enemy.id,
@@ -358,8 +359,14 @@ export class Game {
     this.flightPos = 0;
     this.lastTrail = null;
     this.whistleHandle = sfx.whistle();
-    this.stats.shotsFired++;
-    if (msg.allPerfect) this.stats.perfects++;
+    // The after-action report is about THIS player's shooting, so only credit
+    // rounds this client actually fired. In a hot-seat duel both guns are ours.
+    this.shotIsMine = this.isMyTurnFor(shooter.side);
+    this.shotEnemyId = enemy.id;
+    if (this.shotIsMine) {
+      this.stats.shotsFired++;
+      if (msg.allPerfect) this.stats.perfects++;
+    }
 
     // Grade feedback for the shooter only.
     if (this.isMyTurnFor(shooter.side) && msg.grades) {
@@ -503,6 +510,17 @@ export class Game {
     };
     shooterNow.trail = r.path;
 
+    if (r.outcome === phys.HIT_WATER) {
+      sfx.splash();
+      this.effects.splash(r.x, r.y);
+      this.effects.text(r.x, r.y - 40, 'INTO THE DRINK', '#9fd0dc', { size: 20 });
+      this.toast = { text: 'SHORT -- INTO THE WATER', t: 2.0, color: '#7fb6c9' };
+      this.roundLog.push({ turn: this.turn, outcome: 'water', dmg: 0 });
+      this.lastTrail = r.path;
+      this.setState(ST.HANDOFF);
+      return;
+    }
+
     if (r.outcome === phys.OUT_OF_BOUNDS || r.outcome === phys.TIMED_OUT) {
       sfx.dud();
       this.toast = { text: r.outcome === phys.TIMED_OUT ? 'ROUND LOST' : 'OFF THE MAP', t: 2.0, color: '#9c9382' };
@@ -532,6 +550,7 @@ export class Game {
 
     // Damage everyone in range.
     let totalDamage = 0;
+    let damageToEnemy = 0;
     for (const p of this.players) {
       const ux = p.x, uy = p.y - 16;
       const d = Math.hypot(r.x - ux, r.y - uy);
@@ -541,6 +560,7 @@ export class Game {
       p.hp = Math.max(0, p.hp - dmg);
       p.hitFlash = 1;
       totalDamage += dmg;
+      if (p.id === this.shotEnemyId) damageToEnemy += dmg;
       const shove = blastShove(shell, ux - r.x, d);
       p.x = Math.max(24, Math.min(WORLD_W - 24, p.x + shove));
       const mine = this.isMyTurnFor(p.side);
@@ -550,9 +570,9 @@ export class Game {
       if (isDirect) this.effects.text(ux, uy - 58, 'DIRECT HIT', '#e2c45a', { size: 18, life: 1.8 });
       else if (airburst) this.effects.text(ux, uy - 58, 'AIRBURST', '#e2c45a', { size: 18, life: 1.8 });
     }
-    if (totalDamage > 0) {
+    if (this.shotIsMine && damageToEnemy > 0) {
       this.stats.hits++;
-      this.stats.bestDamage = Math.max(this.stats.bestDamage, totalDamage);
+      this.stats.bestDamage = Math.max(this.stats.bestDamage, damageToEnemy);
     }
     this.roundLog.push({
       turn: this.turn, outcome: direct ? 'direct' : airburst ? 'airburst' : 'blast', dmg: totalDamage,
@@ -799,6 +819,7 @@ export class Game {
     this.effects.drawGroundSmoke(r.ctx);
     r.drawTerrain(this.terrain);
     r.drawProps(this.props, this.sprites);
+    r.drawWater(this.map, r.time);
 
     // The arc of the round just fired stays up through the impact, and while a
     // gunner is aiming they see their OWN last arc rather than the enemy's --
@@ -879,6 +900,6 @@ export class Game {
     return phys.previewPath({
       x: m.x, y: m.y, vx: v.vx, vy: v.vy,
       mass: shell.mass, windDrift: shell.windDrift,
-    }, { width: WORLD_W, height: WORLD_H, wind: this.wind }, 0.85);
+    }, { width: WORLD_W, height: WORLD_H, wind: this.wind, waterY: this.map.water || 0 }, 0.85);
   }
 }

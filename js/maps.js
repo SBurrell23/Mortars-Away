@@ -145,17 +145,20 @@ const GEN = {
   // Karst pillars. Tiny targets, lots of terrain to chew through.
   spires(rng, w) {
     const h = new Float32Array(w);
-    for (let x = 0; x < w; x++) h[x] = 660;
+    // The ash flat sits high enough that the whole map reads inside the frame;
+    // at a lower floor the pillars were stumps crowded into the bottom fifth.
+    const floor = 600;
+    for (let x = 0; x < w; x++) h[x] = floor;
     const cols = 5;
     for (let i = 0; i < cols; i++) {
       const cx = 46 + i * (w / 2 / cols) + rng.range(-10, 10);
-      const half = rng.range(13, 25);
-      const top = rng.range(486, 556);
+      const half = rng.range(14, 26);
+      const top = rng.range(452, 522);
       for (let x = Math.round(cx - half); x <= Math.round(cx + half); x++) {
         if (x < 0 || x >= w / 2) continue;
         const t = Math.abs(x - cx) / half;
         const shoulder = 1 - t * t * t;
-        h[x] = Math.min(h[x], 660 - (660 - top) * shoulder);
+        h[x] = Math.min(h[x], floor - (floor - top) * shoulder);
       }
     }
     return mirror(clampHeights(h, 250, 690));
@@ -328,8 +331,8 @@ export const MAPS = [
     gap: 780,
     windBias: 1.2,
     layers: ['ash', 'ash', 'rock', 'rock'],
-    sky: ['#4a4038', '#6b5a4a', '#93796a'],
-    fog: 'rgba(150,120,100,0.38)',
+    sky: ['#6d5a52', '#93756a', '#c09b82'],
+    fog: 'rgba(178,140,112,0.32)',
     props: ['tree_dead_a', 'barrel', 'wreck_tank', 'helmet_gnd'],
     propDensity: 0.9,
     gimmick: 'Thin spires shatter fast. The map opens right up after four turns.',
@@ -358,6 +361,8 @@ export const MAPS = [
     gap: 760,
     windBias: 1.4,
     layers: ['sand', 'sand', 'clay', 'rock'],
+    water: 624,
+    waterColor: ['rgba(38,104,128,0.62)', 'rgba(20,62,84,0.86)'],
     sky: ['#4d7f97', '#77a8b6', '#aecfd4'],
     fog: 'rgba(150,195,205,0.30)',
     props: ['bunker', 'crate', 'barrel', 'flag_pole', 'sandbags'],

@@ -350,6 +350,37 @@ export function dud() {
   o.start(t); o.stop(t + 0.4);
 }
 
+export function splash() {
+  if (!started) return;
+  const t = now();
+  // Bright noise burst swept downward through a bandpass reads as water.
+  const n = noiseSource(1.3);
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(2600, t);
+  bp.frequency.exponentialRampToValueAtTime(420, t + 0.5);
+  bp.Q.value = 0.8;
+  n.connect(bp);
+  env(bp, t, 0.004, 0.6, 0.34);
+  env(bp, t, 0.004, 1.0, 0.16, verbBus);
+  n.start(t); n.stop(t + 1.2);
+
+  // Low gulp underneath.
+  const o = osc('sine', 300, t);
+  o.frequency.exponentialRampToValueAtTime(70, t + 0.3);
+  env(o, t, 0.006, 0.34, 0.2);
+  o.start(t); o.stop(t + 0.45);
+
+  // Trailing droplets.
+  for (let i = 0; i < 5; i++) {
+    const tt = t + 0.14 + Math.random() * 0.5;
+    const d = osc('sine', 900 + Math.random() * 900, tt);
+    d.frequency.exponentialRampToValueAtTime(300, tt + 0.08);
+    env(d, tt, 0.002, 0.09, 0.05);
+    d.start(tt); d.stop(tt + 0.14);
+  }
+}
+
 export function crumble() {
   if (!started) return;
   const t = now();

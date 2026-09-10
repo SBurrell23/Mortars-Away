@@ -166,6 +166,36 @@ export class Renderer {
     terrain.drawChunks(this.ctx);
   }
 
+  // Open water, drawn over the terrain so island flanks fade into it instead
+  // of reading as pillars over an abyss.
+  drawWater(map, t) {
+    if (!map.water) return;
+    const ctx = this.ctx;
+    const y = map.water;
+    const cols = map.waterColor || ['rgba(38,104,128,0.62)', 'rgba(20,62,84,0.86)'];
+    const g = ctx.createLinearGradient(0, y, 0, WORLD_H);
+    g.addColorStop(0, cols[0]);
+    g.addColorStop(1, cols[1]);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, y, WORLD_W, WORLD_H - y);
+
+    // A couple of slow swells so the surface is not a dead straight edge.
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = '#cfe6ec';
+    for (let x = 0; x < WORLD_W; x += 4) {
+      const h = Math.sin(x * 0.021 + t * 1.1) * 1.6 + Math.sin(x * 0.007 - t * 0.7) * 2.2;
+      ctx.fillRect(x, y + h - 1, 3, 2);
+    }
+    ctx.globalAlpha = 0.18;
+    for (let i = 0; i < 26; i++) {
+      const sx = (i * 137 + Math.sin(t * 0.4 + i) * 30) % WORLD_W;
+      const sy = y + 14 + ((i * 53) % Math.max(1, WORLD_H - y - 20));
+      ctx.fillRect(sx, sy, 18, 1);
+    }
+    ctx.restore();
+  }
+
   drawProps(props, sprites) {
     const ctx = this.ctx;
     for (const p of props) {

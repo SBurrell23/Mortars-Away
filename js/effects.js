@@ -208,6 +208,44 @@ export class Effects {
     }
   }
 
+  // A round going into the sea.
+  splash(x, y) {
+    for (let i = 0; i < 54; i++) {
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.5;
+      const sp = 90 + Math.random() * 330;
+      this.particle({
+        x: x + (Math.random() - 0.5) * 16,
+        y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        life: 0.4 + Math.random() * 0.8,
+        maxLife: 1.2,
+        r: 1 + Math.random() * 3,
+        grav: 700,
+        drag: 0.5,
+        kind: 'water',
+      });
+    }
+    for (let i = 0; i < 14; i++) {
+      this.particle({
+        x: x + (Math.random() - 0.5) * 40,
+        y: y - Math.random() * 10,
+        vx: (Math.random() - 0.5) * 50,
+        vy: -20 - Math.random() * 40,
+        life: 0.6 + Math.random() * 0.9,
+        maxLife: 1.5,
+        r: 5 + Math.random() * 11,
+        grav: -8,
+        drag: 1.2,
+        kind: 'smoke',
+        hue: 40,
+        alpha: 0.32,
+      });
+    }
+    this.rings.push({ x, y, r: 6, max: 90, life: 0.5, maxLife: 0.5, w: 3 });
+    this.addShake(5);
+  }
+
   // Dirt kicked up where a dud round buries itself.
   thud(x, y) {
     for (let i = 0; i < 16; i++) {
@@ -358,6 +396,10 @@ export class Effects {
         g.addColorStop(1, 'rgba(180,44,16,0)');
         ctx.fillStyle = g;
         ctx.fillRect(p.x - size, p.y - size, size * 2, size * 2);
+      } else if (p.kind === 'water') {
+        ctx.fillStyle = 'rgba(' + (170 + Math.floor(k * 60)) + ','
+          + (215 + Math.floor(k * 30)) + ',232,' + Math.min(1, k * 1.4).toFixed(3) + ')';
+        ctx.fillRect(p.x - p.r / 2, p.y - p.r / 2, p.r, p.r * 1.6);
       } else if (p.kind === 'spark') {
         ctx.fillStyle = 'rgba(255,' + Math.round(190 + 60 * k) + ',' + Math.round(90 + 90 * k) + ',' + k.toFixed(3) + ')';
         const l = Math.max(1.5, Math.hypot(p.vx, p.vy) * 0.012);
