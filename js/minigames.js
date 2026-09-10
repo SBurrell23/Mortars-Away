@@ -7,6 +7,14 @@ import * as sfx from './audio.js';
 
 const FONT = '"Courier New", ui-monospace, monospace';
 
+// The panel is sized for the fuse sight, which is the tallest of the three
+// stages by some way. Every stage hangs its working area off the middle of the
+// space between the header and the stage pips so the shorter ones do not sit
+// up under the title with a drift of dead panel below them.
+function bodyMid(box) {
+  return box.y + 64 + (box.h - 82) / 2;
+}
+
 class Stage {
   constructor(cfg) {
     this.cfg = cfg;
@@ -72,7 +80,7 @@ export class RamStage extends Stage {
 
     // Ramrod track.
     const bx = x + 40, bw = w - 80;
-    const by = y + 74, bh = 34;
+    const by = bodyMid(box) - 44, bh = 34;
     ctx.fillStyle = '#15120e';
     ctx.fillRect(bx, by, bw, bh);
     const grd = ctx.createLinearGradient(bx, 0, bx + bw, 0);
@@ -155,7 +163,7 @@ export class ElevationStage extends Stage {
 
     const bw = cfg.barWidth;
     const bx = x + (w - bw) / 2;
-    const by = y + 84, bh = 40;
+    const by = bodyMid(box) - 28, bh = 40;
 
     ctx.fillStyle = '#15120e';
     ctx.fillRect(bx, by, bw, bh);
@@ -239,15 +247,19 @@ export class FuseStage extends Stage {
     panel(ctx, box, cfg.title, cfg.hint);
 
     const cx = x + w / 2;
-    const cy = y + 84 + cfg.maxR * 0.62;
+    // At the top of its swing the ring reaches maxR, so the sight plus its
+    // graticule arms is a good 210px tall. Centring it leaves just enough
+    // clearance for the header above and the caption below.
+    const cy = bodyMid(box) - 8;
+    const arm = cfg.maxR + 10;
     const r = this.lockedR !== null ? this.lockedR : this.r;
 
     // Sight graticule.
     ctx.strokeStyle = '#3c362c';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(cx - cfg.maxR - 16, cy); ctx.lineTo(cx + cfg.maxR + 16, cy);
-    ctx.moveTo(cx, cy - cfg.maxR - 16); ctx.lineTo(cx, cy + cfg.maxR + 16);
+    ctx.moveTo(cx - arm, cy); ctx.lineTo(cx + arm, cy);
+    ctx.moveTo(cx, cy - arm); ctx.lineTo(cx, cy + arm);
     ctx.stroke();
 
     // Tolerance band around the target ring.
@@ -278,7 +290,7 @@ export class FuseStage extends Stage {
     ctx.font = '15px ' + FONT;
     ctx.fillStyle = '#9c9382';
     ctx.textAlign = 'center';
-    ctx.fillText('A TIGHT FUSE BURSTS ON PROXIMITY', cx, cy + cfg.maxR + 40);
+    ctx.fillText('A TIGHT FUSE BURSTS ON PROXIMITY', cx, cy + cfg.maxR + 26);
     ctx.textAlign = 'left';
   }
 }
@@ -365,11 +377,13 @@ export class LoadSequence {
   draw(ctx, box) {
     if (this.done) return;
     this.stages[this.index].draw(ctx, box);
-    // Stage pips.
+    // Stage pips. Three 22px pips on a 34px pitch are 90px of row, so the run
+    // starts 45px left of centre rather than 34 -- otherwise the whole strip
+    // sits visibly off to the right of the panel.
     const { x, y, w, h } = box;
-    const pipY = y + h - 22;
+    const pipY = y + h - 18;
     for (let i = 0; i < this.stages.length; i++) {
-      const px = x + w / 2 - 34 + i * 34;
+      const px = x + w / 2 - 45 + i * 34;
       const st = this.stages[i];
       ctx.fillStyle = i < this.index ? (this.perfects[st.cfg.id] ? '#e2c45a' : '#6f9e4a')
         : i === this.index ? '#d8d2bb' : '#4a4438';

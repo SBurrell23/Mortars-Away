@@ -445,12 +445,17 @@ export class Effects {
       const a = Math.min(1, t.life / (t.maxLife * 0.4));
       ctx.globalAlpha = a;
       ctx.font = (t.bold ? 'bold ' : '') + t.size + 'px "Courier New", ui-monospace, monospace';
+      // A round that lands against the left or right edge would otherwise have
+      // half of INTO THE DRINK cut off by the edge of the playfield, so the
+      // label slides inboard far enough to be read in full.
+      const half = ctx.measureText(t.str).width / 2 + 8;
+      const x = Math.max(half, Math.min(this.w - half, t.x));
       if (t.shadow) {
         ctx.fillStyle = 'rgba(0,0,0,0.75)';
-        ctx.fillText(t.str, t.x + 2, t.y + 2);
+        ctx.fillText(t.str, x + 2, t.y + 2);
       }
       ctx.fillStyle = t.color;
-      ctx.fillText(t.str, t.x, t.y);
+      ctx.fillText(t.str, x, t.y);
     }
     ctx.globalAlpha = 1;
     ctx.textAlign = 'left';

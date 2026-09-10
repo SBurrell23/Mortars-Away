@@ -161,7 +161,9 @@ export class Game {
     const attr = attritionForTurn(turn);
     if (attr > 0) {
       for (const p of this.players) p.hp = Math.max(0, p.hp - attr);
-      this.effects.text(WORLD_W / 2, 150, 'COUNTER-BATTERY FIRE  -' + attr, '#c9502f',
+      // Spawned below the toast strip: the label drifts upward as it fades and
+      // any higher than this it slides behind the turn announcement.
+      this.effects.text(WORLD_W / 2, 168, 'COUNTER-BATTERY FIRE  -' + attr, '#c9502f',
         { size: 22, life: 2.2 });
       if (this.checkElimination()) return;
     }
@@ -918,24 +920,31 @@ export class Game {
     r.drawHud(this, this.sprites);
     if (this.state === ST.AIM && this.isMyTurn()) r.drawGunPanel(this, this.sprites);
 
+    // A loading panel owns the middle of the screen and is drawn over the top
+    // of everything, so a banner still running -- RETURN FIRE, or the map
+    // intro if the gunner is quick off the mark -- moves up into the strip
+    // below the toast rather than being buried by the panel.
+    const panelUp = (this.state === ST.LOADING && this.isMyTurn()) || !!this.aiLoad;
+    const bannerY = panelUp ? 136 : WORLD_H / 2 - 70;
+
     if (this.state === ST.AIM && !this.isMyTurn()) {
       r.drawBanner(this.enemyLoading ? 'ENEMY IS LOADING' : 'ENEMY IS RANGING IN',
         this.enemyLoading ? 'Brace' : this.players[this.turnSide].name.toUpperCase() + ' has the gun',
-        '#9c9382');
+        '#9c9382', bannerY);
     }
 
     if (this.banner) {
       r.drawBanner(this.banner.text, this.banner.sub,
         this.state === ST.OVER
           ? (this.winner === this.mySide || this.localBoth ? '#e2c45a' : '#c9502f')
-          : '#e2c45a');
+          : '#e2c45a', bannerY);
     }
     if (this.toast) r.drawToast(this.toast.text, this.toast.color);
 
     // Drawn last: while a gunner is working the loading stages, nothing is
     // allowed to sit on top of the panel they are reacting to.
     if (this.state === ST.LOADING && this.isMyTurn()) {
-      const box = { x: WORLD_W / 2 - 300, y: WORLD_H / 2 - 140, w: 600, h: 290 };
+      const box = { x: WORLD_W / 2 - 300, y: WORLD_H / 2 - 134, w: 600, h: 326 };
       this.load.draw(r.ctx, box);
     } else if (this.aiLoad) {
       r.drawAiLoad(this.aiLoad, this.players[this.turnSide].name);
@@ -953,7 +962,12 @@ export class Game {
     ctx.font = '13px "Courier New", ui-monospace, monospace';
     ctx.fillStyle = 'rgba(232,226,204,0.55)';
     ctx.textAlign = 'right';
-    ctx.fillText('W / S  elevation      A / D  charge      SPACE  load and fire', WORLD_W - 18, WORLD_H - 22);
+    // The ping and QUIT controls are DOM elements in the bottom-right corner,
+    // sized in screen pixels, so they eat more of the playfield the smaller
+    // the window gets. Hold the key hints clear of them without letting the
+    // line slide back under the LOAD button on a very small screen.
+    const right = Math.max(1010, WORLD_W - 24 - 120 / r.scale);
+    ctx.fillText('W / S  elevation      A / D  charge      SPACE  load and fire', right, WORLD_H - 22);
     ctx.textAlign = 'left';
     ctx.restore();
   }

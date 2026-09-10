@@ -419,8 +419,21 @@ export function placeProps(mapDef, heights, rng, anchors) {
     if (anchors.some((a) => Math.abs(a - x) < 70)) continue;
     const gy = heights[x];
     if (gy >= WORLD_H - 8) continue;
-    const slope = Math.abs(heights[Math.max(0, x - 6)] - heights[Math.min(WORLD_W - 1, x + 6)]);
-    if (slope > 16) continue;
+    // The widest props are around fifty pixels across, so a twelve-pixel probe
+    // says nothing about whether there is ground under the whole sprite. Take
+    // the spread across the footprint instead, or a bunker on the lip of a
+    // ravine ends up hanging in mid air with the hillside falling away beneath
+    // it.
+    // Generous, because most of these maps are meant to be broken ground: this
+    // is only here to throw out the placements where the hillside falls away
+    // faster than the sprite is wide.
+    let lo = gy, hi = gy;
+    for (let dx = -18; dx <= 18; dx += 4) {
+      const hh = heights[Math.max(0, Math.min(WORLD_W - 1, x + dx))];
+      if (hh < lo) lo = hh;
+      if (hh > hi) hi = hh;
+    }
+    if (hi - lo > 34) continue;
     out.push({ name: rng.pick(names), x, y: Math.round(gy), flip: rng.bool() });
   }
   return out;

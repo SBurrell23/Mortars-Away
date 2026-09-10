@@ -10,6 +10,9 @@ export const PROP_SCALE = 2;
 export const TILE_SCALE = 2;
 
 const FONT = '"Courier New", ui-monospace, monospace';
+// Depth of the opaque top banner. A shell above this line is behind the HUD
+// rather than merely high, so that is where the off-screen marker takes over.
+const HUD_H = 64;
 const INK = '#e8e2cc';
 const INK_DIM = '#9c9382';
 const GOLD = '#e2c45a';
@@ -95,6 +98,15 @@ export class Renderer {
     g.addColorStop(1, map.sky[2]);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+
+    // Below the waterline there is sea, not sky. The water itself is drawn
+    // translucent so island flanks fade into it, which means that without an
+    // opaque bed behind it the open channels between islands show the horizon
+    // straight through the sea as pale vertical bands.
+    if (map.water) {
+      ctx.fillStyle = (map.waterColor && map.waterColor[1]) || 'rgba(20,62,84,0.86)';
+      ctx.fillRect(0, map.water, WORLD_W, WORLD_H - map.water);
+    }
   }
 
   drawBackdrop(backdrop, sprites, map, dt) {
@@ -108,6 +120,16 @@ export class Renderer {
       const s = 3.2;
       ctx.globalAlpha = 0.26 - hl.depth * 0.3;
       ctx.drawImage(img, hl.x, hl.y, img.width * s, img.height * s);
+      // The sprites end in a flat bottom edge that the terrain normally hides.
+      // A map with a deep chasm in it drops well below that line, so stretch
+      // the last row down to the foot of the world rather than leave a slab of
+      // ridge hanging in the gorge.
+      const floor = map.water || WORLD_H;
+      const foot = hl.y + img.height * s;
+      if (foot < floor) {
+        ctx.drawImage(img, 0, img.height - 1, img.width, 1,
+          hl.x, foot, img.width * s, floor - foot);
+      }
       ctx.globalAlpha = 1;
     }
 
@@ -144,7 +166,10 @@ export class Renderer {
       this._fogCache = { key: map.fog, grad: fg };
     }
     ctx.fillStyle = this._fogCache.grad;
-    ctx.fillRect(0, 250, WORLD_W, WORLD_H - 250);
+    // Stop the haze at the waterline. Past it there is only sea bed, and
+    // fogging that but not the terrain in front of it is what turns the
+    // channels between islands into pale vertical bands.
+    ctx.fillRect(0, 250, WORLD_W, (map.water || WORLD_H) - 250);
 
     // Birds.
     const bd = sprites.bird_a;
@@ -344,7 +369,7 @@ export class Renderer {
     const ctx = this.ctx;
     const img = sprites[shell.sprite];
     const ang = Math.atan2(shell.vy, shell.vx) + Math.PI / 2;
-    if (shell.y < 8) return; // handled by the off-screen indicator
+    if (shell.y < HUD_H) return; // handled by the off-screen indicator
     ctx.save();
     ctx.translate(shell.x, shell.y);
     ctx.rotate(ang);
@@ -367,23 +392,26 @@ export class Renderer {
     }
   }
 
-  // Arrow at the top of the screen tracking a shell that has arced out of view.
+  // Arrow tracking a shell that has arced out of view. It sits just under the
+  // top banner rather than at the very top of the world, because the banner is
+  // opaque and drawn over the playfield: an indicator up there is invisible.
   drawOffscreenShell(shell) {
-    if (shell.y >= 8) return;
+    if (shell.y >= HUD_H) return;
     const ctx = this.ctx;
     const x = Math.max(16, Math.min(WORLD_W - 16, shell.x));
+    const top = HUD_H + 8;
     ctx.save();
     ctx.globalAlpha = 0.85;
     ctx.fillStyle = GOLD;
     ctx.beginPath();
-    ctx.moveTo(x, 6);
-    ctx.lineTo(x - 9, 22);
-    ctx.lineTo(x + 9, 22);
+    ctx.moveTo(x, top);
+    ctx.lineTo(x - 9, top + 16);
+    ctx.lineTo(x + 9, top + 16);
     ctx.closePath();
     ctx.fill();
     ctx.font = 'bold 12px ' + FONT;
     ctx.textAlign = 'center';
-    ctx.fillText(Math.round(-shell.y) + '', x, 36);
+    ctx.fillText(Math.round(HUD_H - shell.y) + '', x, top + 30);
     ctx.textAlign = 'left';
     ctx.restore();
   }
@@ -534,14 +562,27 @@ export class Renderer {
     ctx.lineWidth = 2;
     ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
 
+    // The right-hand column carries the spotting report and the pips. It has
+    // to start clear of the longest shell name, or FEATHER CHARGE lands on top
+    // of the last round's correction.
+    const col = x + 200;
+
     const shell = g.currentShell;
     ctx.font = 'bold 15px ' + FONT;
     ctx.fillStyle = INK_DIM;
     ctx.fillText('IN THE TUBE', x + 14, y + 24);
 
-    ctx.font = 'bold 21px ' + FONT;
+    // Belt and braces: if the fallback font is wider than Courier, step the
+    // name down rather than let it run into the column.
+    const nameStr = shell ? shell.name.toUpperCase() : '-';
+    let ns = 21;
+    ctx.font = 'bold ' + ns + 'px ' + FONT;
+    while (ns > 13 && ctx.measureText(nameStr).width > 178) {
+      ns -= 1;
+      ctx.font = 'bold ' + ns + 'px ' + FONT;
+    }
     ctx.fillStyle = GOLD;
-    ctx.fillText(shell ? shell.name.toUpperCase() : '-', x + 14, y + 48);
+    ctx.fillText(nameStr, x + 14, y + 48);
 
     ctx.font = '13px ' + FONT;
     ctx.fillStyle = INK_DIM;
@@ -549,9 +590,9 @@ export class Renderer {
 
     // Weight / drift / blast pips give the tradeoff at a glance.
     if (shell) {
-      this.drawPips(x + 130, y + 58, 'REACH', shell.velMult, 0.7, 1.3);
-      this.drawPips(x + 130, y + 76, 'DRIFT', shell.windDrift, 0.3, 2.3);
-      this.drawPips(x + 130, y + 94, 'BLAST', shell.falloff, 50, 150);
+      this.drawPips(col, y + 58, 'REACH', shell.velMult, 0.7, 1.3);
+      this.drawPips(col, y + 76, 'DRIFT', shell.windDrift, 0.3, 2.3);
+      this.drawPips(col, y + 94, 'BLAST', shell.falloff, 50, 150);
     }
 
     // Spotting report from this gun's previous round.
@@ -559,23 +600,24 @@ export class Renderer {
     if (lr) {
       ctx.font = '12px ' + FONT;
       ctx.fillStyle = INK_DIM;
-      ctx.fillText('LAST ROUND', x + 130, y + 24);
+      ctx.fillText('LAST ROUND', col, y + 24);
       ctx.font = 'bold 16px ' + FONT;
       ctx.fillStyle = lr.word === 'ON' ? '#7fae4e' : lr.word === 'LONG' ? '#e8734a' : '#6fa0c9';
       ctx.fillText(lr.word === 'ON' ? 'ON TARGET' : Math.abs(lr.err) + ' ' + lr.word,
-        x + 130, y + 43);
+        col, y + 43);
     }
 
-    // Angle and power readouts.
+    // Angle and power readouts. The charge bar runs the width of the panel and
+    // its marker overhangs the bar, so the elevation sits clear above it.
     ctx.font = 'bold 15px ' + FONT;
     ctx.fillStyle = INK_DIM;
-    ctx.fillText('ELEV', x + 14, y + 92);
+    ctx.fillText('ELEV', x + 14, y + 88);
     ctx.font = 'bold 22px ' + FONT;
     ctx.fillStyle = INK;
-    ctx.fillText(g.aimAngle.toFixed(1) + '°', x + 14, y + 114);
+    ctx.fillText(g.aimAngle.toFixed(1) + '°', x + 14, y + 108);
 
     // Power meter.
-    const pw = 300, px = x + 14, py = y + h - 12;
+    const pw = 300, px = x + 14, py = y + h - 8;
     ctx.fillStyle = 'rgba(8,7,6,0.9)';
     ctx.fillRect(px, py - 6, pw, 7);
     const pf = (g.aimPower - 0.35) / 0.65;
@@ -586,7 +628,7 @@ export class Renderer {
     ctx.fillStyle = grd;
     ctx.fillRect(px, py - 6, pw * pf, 7);
     ctx.fillStyle = INK;
-    ctx.fillRect(px + pw * pf - 1, py - 11, 3, 17);
+    ctx.fillRect(px + pw * pf - 1, py - 9, 3, 13);
 
     this.drawFireButton();
   }
@@ -679,9 +721,9 @@ export class Renderer {
     ctx.textAlign = 'left';
   }
 
-  drawBanner(text, sub, color) {
+  drawBanner(text, sub, color, topY) {
     const ctx = this.ctx;
-    const y = WORLD_H / 2 - 70;
+    const y = topY !== undefined ? topY : WORLD_H / 2 - 70;
     ctx.save();
     ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(10,9,7,0.72)';

@@ -204,6 +204,9 @@ input:focus-visible,
 
 input[type="range"] {
   width: 100%;
+  /* The UA default is margin: 2px, which on a full-width slider both overflows
+     the field and pushes the track two pixels off the label above it. */
+  margin: 0;
   accent-color: var(--gold);
   background: transparent;
 }
@@ -443,6 +446,12 @@ kbd {
   background: #0d0c09;
   border: 1px solid var(--edge);
   padding: 10px 12px;
+  /* Narrow windows wrap ROUNDS ON TARGET onto two lines and its neighbour onto
+     one. Pinning the figure to the foot of the box keeps the numbers on a line
+     with each other instead of stepping. */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 .stat span { display: block; font-size: 10px; letter-spacing: 0.2em; color: var(--ink-dim); }
 .stat b { display: block; font-size: 24px; color: var(--gold); margin-top: 3px; }
@@ -475,6 +484,10 @@ kbd {
   background: var(--panel);
   padding: 26px 34px;
   text-align: center;
+  /* Without a measure the longest message (the build-mismatch notice) sets the
+     width to one unbroken line, and the panel goes full-bleed with its side
+     borders off the edge of the window. */
+  max-width: min(480px, calc(100% - 48px));
 }
 .overlay-inner p { margin: 0 0 14px; font-size: 15px; letter-spacing: 0.1em; }
 
