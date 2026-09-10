@@ -166,6 +166,65 @@ check('attrition guarantees the match ends', () => {
   return 'hard stop by turn ' + turn;
 });
 
+// ------------------------------------------------------------- 3b. AI
+
+const { AI_LEVELS, aiLevelById, AiGunner } = await import('../js/ai.js');
+
+console.log('\npractice opponent');
+check('difficulty ladder is ordered and distinct', () => {
+  assert(AI_LEVELS.length >= 3, 'need at least three levels');
+  const ids = new Set(AI_LEVELS.map((l) => l.id));
+  assert(ids.size === AI_LEVELS.length, 'duplicate level ids');
+  for (let i = 1; i < AI_LEVELS.length; i++) {
+    assert(AI_LEVELS[i].skill > AI_LEVELS[i - 1].skill,
+      AI_LEVELS[i].id + ' is not harder than ' + AI_LEVELS[i - 1].id);
+  }
+  for (const l of AI_LEVELS) {
+    assert(l.skill > 0 && l.skill < 1, l.id + ' skill out of range');
+    assert(l.name && l.blurb, l.id + ' is missing display text');
+  }
+  return AI_LEVELS.map((l) => l.name + ' ' + l.skill).join(', ');
+});
+
+check('unknown level falls back rather than throwing', () => {
+  const l = aiLevelById('does-not-exist');
+  assert(l && l.id, 'no fallback level');
+  return 'falls back to ' + l.id;
+});
+
+check('the AI misjudges the wind in proportion to its level', () => {
+  // Solving against a believed wind is what makes a recruit miss like a
+  // recruit. Confirm the spread actually widens as skill drops.
+  const fakeGame = {
+    wind: 0.6, maxWind: 1, worldW: WORLD_W,
+    turnSide: 1,
+    currentShell: bal.shellById('standard'),
+    players: [
+      { x: 260, y: 560, facing: 1, muzzle: { x: 300, y: 520 } },
+      { x: 1020, y: 560, facing: -1, muzzle: { x: 980, y: 520 } },
+    ],
+  };
+  let prev = -1;
+  const spreads = [];
+  for (const lvl of AI_LEVELS) {
+    const ai = new AiGunner(lvl);
+    let sum = 0;
+    const N = 400;
+    for (let i = 0; i < N; i++) {
+      ai.planTurn(fakeGame);
+      sum += Math.abs(ai.windGuess - fakeGame.wind);
+    }
+    const mean = sum / N;
+    spreads.push(lvl.id + ' ' + mean.toFixed(3));
+    if (prev >= 0) {
+      assert(mean < prev + 1e-9,
+        lvl.id + ' misjudges the wind more than the level below it');
+    }
+    prev = mean;
+  }
+  return 'mean wind error: ' + spreads.join(', ');
+});
+
 // ----------------------------------------------------------- 4. maps
 
 console.log('\nmaps');

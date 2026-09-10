@@ -121,6 +121,31 @@ loaded *source text* of the functions and tables that decide a shot - not a
 hand-maintained version constant, which would be useless precisely when the
 module holding it is the stale one. Mismatched builds get told to reload.
 
+## Playing alone
+
+**PRACTICE VS AI** puts you against a computer gunner at one of four levels.
+
+| Level | What you are up against |
+| --- | --- |
+| RECRUIT | Barely trained. A competent player beats it about four times in five. |
+| GUNNER | An even fight. Reads the wind, fumbles the ram about as often as you do. |
+| VETERAN | Ranges in fast and rarely wastes a heavy round. |
+| ACE | Brackets you in two rounds and hits with the third. |
+
+The AI does not cheat. It has no private line to the physics: it solves the same
+trajectory problem you do, throws the same three loading stages, and takes the
+same shell the dice gave it. What its level changes is mostly **how well it
+reads the wind** - a recruit's estimate is off by an average of 0.25 against an
+ace's 0.03, so it misjudges the gale and lands two hundred pixels downwind. That
+is the same mistake a new player makes, which is what you want in a practice
+opponent: it looks like bad gunnery rather than like injected randomness. It also
+ranges in off its own last round, exactly the way you do, and its correction gets
+sharper the higher its level.
+
+Measured against a scripted player of fixed middling ability, the player wins
+78% / 56% / 17% / 17% across the four levels, and an ACE kills in roughly seven
+turns where a VETERAN takes ten.
+
 There is also a **LOCAL DUEL** mode for two people at one keyboard.
 
 ---

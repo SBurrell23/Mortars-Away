@@ -22,6 +22,7 @@ import {
   POWER_MIN, POWER_MAX, TURN_SECONDS, MAX_WIND, UNIT_HIT_RADIUS,
 } from './balance.js';
 import { LoadSequence } from './minigames.js';
+import { AiGunner } from './ai.js';
 import * as sfx from './audio.js';
 import { teamColor } from './render.js';
 
@@ -81,6 +82,9 @@ export class Game {
     this.desyncCount = 0;
     this.keyRepeat = { up: 0, down: 0, left: 0, right: 0 };
     this.stats = { shotsFired: 0, hits: 0, perfects: 0, bestDamage: 0 };
+    this.ai = null;
+    this.aiLoad = null;
+    this.worldW = WORLD_W;
   }
 
   // ------------------------------------------------------------ setup
@@ -89,6 +93,8 @@ export class Game {
     this.matchSeed = opts.seed >>> 0;
     this.mySide = opts.mySide;
     this.localBoth = !!opts.localBoth;
+    this.ai = opts.aiLevel ? new AiGunner(opts.aiLevel) : null;
+    this.aiLoad = null;
     this.map = mapById(opts.mapId);
     this.turn = 0;
     this.winner = -1;
@@ -409,9 +415,19 @@ export class Game {
       if (this.toast.t <= 0) this.toast = null;
     }
 
+    // A solo match hands the far gun to the AI, which drives itself through the
+    // same aim-then-load flow a player goes through.
+    const aiTurn = this.ai && !this.isMyTurn() && this.winner === -1;
+
     switch (this.state) {
-      case ST.AIM: this.updateAim(dt); break;
-      case ST.LOADING: this.updateLoading(dt); break;
+      case ST.AIM:
+        if (aiTurn) this.ai.update(this, dt);
+        else this.updateAim(dt);
+        break;
+      case ST.LOADING:
+        if (aiTurn) this.updateAiLoad(dt);
+        else this.updateLoading(dt);
+        break;
       case ST.FLIGHT: this.updateFlight(dt); break;
       case ST.RESOLVE: this.updateResolve(dt); break;
       case ST.HANDOFF:
@@ -454,6 +470,52 @@ export class Game {
         this.toast = { text: 'OUT OF TIME - RUSHED ROUND', t: 2.2, color: '#c9502f' };
         this.fireResolved();
       }
+    }
+  }
+
+  // The AI's version of the loading panel: the three stages resolve one after
+  // another with their grades shown, so the player can see how well the enemy
+  // crew handled the round before it is even in the air.
+  beginAiLoad(grades, perfects) {
+    this.aiLoad = {
+      t: 0,
+      revealed: 0,
+      grades,
+      perfects,
+      stages: [
+        { id: 'ram', title: 'RAM THE CHARGE', q: grades.ram, perfect: perfects.ram },
+        { id: 'elevation', title: 'LAY THE TUBE', q: grades.elevation, perfect: perfects.elevation },
+        { id: 'fuse', title: 'SET THE FUSE', q: grades.fuse, perfect: perfects.fuse },
+      ],
+    };
+    this.setState(ST.LOADING);
+  }
+
+  updateAiLoad(dt) {
+    const a = this.aiLoad;
+    if (!a) { this.setState(ST.AIM); return; }
+    a.t += dt;
+    const per = 0.55;
+    const want = Math.min(a.stages.length, Math.floor(a.t / per));
+    while (a.revealed < want) {
+      const st = a.stages[a.revealed];
+      a.revealed++;
+      if (st.perfect) sfx.perfect();
+      else if (st.q >= 0.55) sfx.good();
+      else sfx.fail();
+    }
+    if (a.t > per * a.stages.length + 0.45) {
+      this.load.results = {
+        ram: { quality: a.grades.ram, perfect: a.perfects.ram, raw: 0, sign: 1 },
+        elevation: {
+          quality: a.grades.elevation, perfect: a.perfects.elevation, raw: 0,
+          sign: Math.random() < 0.5 ? 1 : -1,
+        },
+        fuse: { quality: a.grades.fuse, perfect: a.perfects.fuse, raw: 0, sign: 1 },
+      };
+      this.load.perfects = { ...a.perfects };
+      this.aiLoad = null;
+      this.fireResolved();
     }
   }
 
@@ -511,6 +573,7 @@ export class Game {
       word: Math.abs(along) < 26 ? 'ON' : along > 0 ? 'LONG' : 'SHORT',
     };
     shooterNow.trail = r.path;
+    if (this.ai && !this.isMyTurnFor(shooterNow.side)) this.ai.observe(along);
 
     if (r.outcome === phys.HIT_WATER) {
       sfx.splash();
@@ -874,6 +937,8 @@ export class Game {
     if (this.state === ST.LOADING && this.isMyTurn()) {
       const box = { x: WORLD_W / 2 - 300, y: WORLD_H / 2 - 140, w: 600, h: 290 };
       this.load.draw(r.ctx, box);
+    } else if (this.aiLoad) {
+      r.drawAiLoad(this.aiLoad, this.players[this.turnSide].name);
     }
 
     if (this.state === ST.AIM && this.isMyTurn()) this.drawAimHelp(r);

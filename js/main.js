@@ -9,6 +9,7 @@ import { Game, ST } from './game.js';
 import { Net, LocalNet, PROTOCOL_VERSION } from './net.js';
 import { MAPS, mapById, WORLD_W, WORLD_H } from './maps.js';
 import { gameFingerprint } from './fingerprint.js';
+import { AI_LEVELS, aiLevelById } from './ai.js';
 import { randomSeed } from './rng.js';
 import * as sfx from './audio.js';
 
@@ -27,6 +28,8 @@ const app = {
   peerName: '',
   selectedMap: MAPS[0].id,
   isHost: false,
+  solo: false,
+  aiLevel: 'gunner',
   inMatch: false,
   rematchMe: false,
   rematchThem: false,
@@ -131,6 +134,29 @@ function buildMapGrid() {
   });
 }
 
+function buildAiGrid() {
+  const grid = $('ai-grid');
+  grid.innerHTML = '';
+  AI_LEVELS.forEach((l) => {
+    const b = document.createElement('button');
+    b.className = 'ai-card';
+    b.dataset.ai = l.id;
+    b.innerHTML = '<span class="ac-name">' + l.name + '</span>'
+      + '<span class="ac-blurb">' + l.blurb + '</span>';
+    b.addEventListener('click', () => { selectAi(l.id); sfx.uiClick(); });
+    grid.appendChild(b);
+  });
+}
+
+function selectAi(id) {
+  app.aiLevel = id;
+  document.querySelectorAll('.ai-card').forEach((c) => {
+    c.classList.toggle('selected', c.dataset.ai === id);
+  });
+  $('slot-1').querySelector('.slot-name').textContent = aiLevelById(id).name;
+  try { localStorage.setItem('mortars.ai', id); } catch (e) { /* private mode */ }
+}
+
 function showMapDetail(id) {
   const m = mapById(id);
   $('map-detail-name').textContent = m.name.toUpperCase();
@@ -162,6 +188,7 @@ function enterLobby(isHost, code) {
   app.isHost = isHost;
   app.rematchMe = false;
   app.rematchThem = false;
+  $('ai-picker').classList.toggle('hidden', !app.solo);
   $('lobby-title').textContent = isHost ? 'STAGING AREA' : 'AWAITING ORDERS';
   $('roomcode').textContent = code || '-----';
   $('roomcode-wrap').classList.toggle('hidden', !code);
@@ -178,6 +205,13 @@ function enterLobby(isHost, code) {
 
 function updateRoster() {
   const s0 = $('slot-0'), s1 = $('slot-1');
+  if (app.solo) {
+    s0.querySelector('.slot-name').textContent = app.myName;
+    s0.classList.add('filled');
+    s1.querySelector('.slot-name').textContent = aiLevelById(app.aiLevel).name;
+    s1.classList.add('filled');
+    return;
+  }
   const hostName = app.isHost ? app.myName : (app.peerName || 'HOST');
   const guestName = app.isHost ? (app.peerName || '') : app.myName;
   s0.querySelector('.slot-name').textContent = hostName;
@@ -204,9 +238,12 @@ function showVersionMismatch() {
 // -------------------------------------------------------------- match
 
 function startMatch(seed, mapId, mySide, localBoth) {
-  const names = app.isHost || localBoth
-    ? [localBoth ? 'ALLIED' : app.myName, localBoth ? 'AXIS' : (app.peerName || 'ENEMY')]
-    : [app.peerName || 'HOST', app.myName];
+  const ai = app.solo ? aiLevelById(app.aiLevel) : null;
+  const names = ai
+    ? [app.myName, ai.name]
+    : app.isHost || localBoth
+      ? [localBoth ? 'ALLIED' : app.myName, localBoth ? 'AXIS' : (app.peerName || 'ENEMY')]
+      : [app.peerName || 'HOST', app.myName];
 
   app.game = new Game({
     renderer: app.renderer,
@@ -217,7 +254,7 @@ function startMatch(seed, mapId, mySide, localBoth) {
     onEvent: onGameEvent,
   });
   app.game.boomFrames = app.boomFrames;
-  app.game.startMatch({ seed, mapId, mySide, localBoth, names });
+  app.game.startMatch({ seed, mapId, mySide, localBoth, names, aiLevel: ai });
   app.inMatch = true;
   app.rematchMe = false;
   app.rematchThem = false;
@@ -236,10 +273,10 @@ function onGameEvent(kind, data) {
 function showResults(data) {
   const g = app.game;
   if (!g) return;
-  const won = g.localBoth ? true : data.winner === g.mySide;
+  const won = g.localBoth && !g.ai ? true : data.winner === g.mySide;
   const draw = data.winner === -2;
   $('result-title').textContent = draw ? 'MUTUAL DESTRUCTION'
-    : g.localBoth ? g.players[data.winner].name.toUpperCase() + ' TAKES THE FIELD'
+    : g.localBoth && !g.ai ? g.players[data.winner].name.toUpperCase() + ' TAKES THE FIELD'
       : won ? 'VICTORY' : 'DEFEAT';
   $('result-sub').textContent = draw
     ? 'Both batteries went up together.'
@@ -261,6 +298,7 @@ function showResults(data) {
 
 function leaveMatch() {
   app.inMatch = false;
+  app.solo = false;
   app.game = null;
   if (app.net) { app.net.close(); app.net = null; }
   sfx.stopWind();
@@ -571,6 +609,8 @@ function loadOpts() {
     if (raw) Object.assign(app.opts, JSON.parse(raw));
     const n = localStorage.getItem('mortars.name');
     if (n) app.myName = n;
+    const a = localStorage.getItem('mortars.ai');
+    if (a) app.aiLevel = a;
   } catch (e) { /* private mode, defaults are fine */ }
 }
 
@@ -607,6 +647,7 @@ function wireUi() {
     sfx.resume(); sfx.uiClick();
     app.myName = ($('name-input').value || 'GUNNER').toUpperCase();
     saveOpts();
+    app.solo = false;
     enterLobby(true, '.....');
     $('lobby-status').textContent = 'Opening a room...';
     const net = new Net();
@@ -643,6 +684,7 @@ function wireUi() {
     try {
       await net.join(code);
       app.isHost = false;
+      app.solo = false;
       net.send({ t: 'hello', name: app.myName, v: PROTOCOL_VERSION, fp: gameFingerprint() });
       enterLobby(false, code);
     } catch (err) {
@@ -657,8 +699,24 @@ function wireUi() {
 
   $('btn-join-back').addEventListener('click', () => { sfx.uiBack(); show('title'); });
 
+  $('btn-practice').addEventListener('click', () => {
+    sfx.resume(); sfx.uiClick();
+    app.myName = ($('name-input').value || 'GUNNER').toUpperCase();
+    saveOpts();
+    app.solo = true;
+    app.isHost = true;
+    app.net = new LocalNet();
+    enterLobby(true, null);
+    $('lobby-title').textContent = 'PRACTICE';
+    $('lobby-status').textContent = 'You take the left gun. Pick an opponent and some ground.';
+    $('btn-start').disabled = false;
+    setMapPickerEnabled(true);
+    selectAi(app.aiLevel);
+  });
+
   $('btn-local').addEventListener('click', () => {
     sfx.resume(); sfx.uiClick();
+    app.solo = false;
     app.isHost = true;
     app.net = new LocalNet();
     enterLobby(true, null);
@@ -672,7 +730,8 @@ function wireUi() {
     sfx.uiClick(1.2);
     const seed = randomSeed();
     if (app.net && app.net.local) {
-      startMatch(seed, app.selectedMap, 0, true);
+      // Solo play drives only the near gun; a hot-seat duel drives both.
+      startMatch(seed, app.selectedMap, 0, !app.solo);
     } else {
       app.net.send({ t: 'start', seed, mapId: app.selectedMap });
       startMatch(seed, app.selectedMap, 0, false);
@@ -722,7 +781,7 @@ function wireUi() {
   $('btn-rematch').addEventListener('click', () => {
     sfx.uiClick();
     if (app.net && app.net.local) {
-      startMatch(randomSeed(), app.selectedMap, 0, true);
+      startMatch(randomSeed(), app.selectedMap, 0, !app.solo);
       return;
     }
     app.rematchMe = true;
@@ -782,6 +841,8 @@ function boot() {
 
   buildAssets();
   buildMapGrid();
+  buildAiGrid();
+  selectAi(app.aiLevel);
   selectMap(MAPS[0].id, false);
   wireUi();
   applyOpts();
@@ -804,11 +865,13 @@ function boot() {
 
   // Expose a handle for the automated playtest harness.
   window.__mortars = app;
-  app.startLocal = (mapId, seed) => {
+  app.startLocal = (mapId, seed, aiId) => {
     app.isHost = true;
+    app.solo = !!aiId;
+    if (aiId) app.aiLevel = aiId;
     app.net = new LocalNet();
     app.selectedMap = mapId || app.selectedMap;
-    startMatch(seed || randomSeed(), app.selectedMap, 0, true);
+    startMatch(seed || randomSeed(), app.selectedMap, 0, !app.solo);
   };
 
   // ?local=<mapId>[&seed=N] drops straight into a hot-seat match. Used by the
@@ -818,7 +881,7 @@ function boot() {
     const id = q.get('local') || MAPS[0].id;
     const seed = q.has('seed') ? (Number(q.get('seed')) >>> 0) : randomSeed();
     sfx.init();
-    app.startLocal(mapById(id).id, seed);
+    app.startLocal(mapById(id).id, seed, q.get('ai'));
     return;
   }
 }

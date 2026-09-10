@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Mortars Away</title>
-<meta name="description" content="A two-player artillery duel. Every shell is a different weight, the wind never sits still, and the ground remembers every hit.">
+<meta name="description" content="A two-player artillery duel with destructible terrain. Every shell is a different weight, the wind never sits still, and the ground remembers every hit. Play online, against an AI, or hot-seat.">
 <meta name="theme-color" content="#12110d">
 <link rel="stylesheet" href="css/style.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%2312110d'/%3E%3Crect x='3' y='9' width='10' height='2' fill='%23e2c45a'/%3E%3Crect x='5' y='5' width='2' height='5' fill='%239aa4ae'/%3E%3Crect x='9' y='3' width='2' height='2' fill='%23c9502f'/%3E%3C/svg%3E">
@@ -29,11 +29,12 @@
       <div class="menu">
         <button class="btn btn-primary" id="btn-host">HOST A BATTLE</button>
         <button class="btn" id="btn-join">JOIN A BATTLE</button>
+        <button class="btn" id="btn-practice">PRACTICE VS AI</button>
         <button class="btn" id="btn-local">LOCAL DUEL</button>
         <button class="btn btn-quiet" id="btn-howto">HOW TO PLAY</button>
         <button class="btn btn-quiet" id="btn-options">OPTIONS</button>
       </div>
-      <p class="footnote">Two players, one battlefield, direct peer-to-peer. Nothing is stored on a server.</p>
+      <p class="footnote">Online play is direct peer-to-peer. Nothing about a match is stored on a server.</p>
     </div>
   </section>
 
@@ -67,6 +68,11 @@
           <div class="slot" id="slot-0"><span class="pip pip-allied"></span><span class="slot-name">-</span><span class="slot-role">ALLIED</span></div>
           <div class="slot" id="slot-1"><span class="pip pip-axis"></span><span class="slot-name">waiting...</span><span class="slot-role">AXIS</span></div>
         </div>
+      </div>
+
+      <div id="ai-picker" class="hidden">
+        <h3 class="section-label">CHOOSE YOUR OPPONENT</h3>
+        <div class="ai-grid" id="ai-grid"></div>
       </div>
 
       <h3 class="section-label">CHOOSE THE GROUND</h3>
@@ -126,6 +132,9 @@
 
           <h3 class="section-label">THE GROUND</h3>
           <p>Every round takes a bite out of the map. Undercut a shelf and the whole overhang comes down. If the ground under a gun goes, so does the gun, and the fall hurts.</p>
+
+          <h3 class="section-label">PRACTISING ALONE</h3>
+          <p>PRACTICE VS AI gives you a computer gunner at four levels. It does not cheat: it solves the same shot you do and works the same three stages. What its level mostly changes is how badly it misreads the wind, which is the same mistake you are learning not to make.</p>
         </div>
       </div>
 

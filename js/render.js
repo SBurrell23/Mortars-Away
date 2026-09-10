@@ -623,6 +623,62 @@ export class Renderer {
     }
   }
 
+  // The enemy crew's loading stages, revealed one at a time.
+  drawAiLoad(a, name) {
+    const ctx = this.ctx;
+    const w = 460, h = 208;
+    const x = WORLD_W / 2 - w / 2, y = WORLD_H / 2 - h / 2 - 30;
+
+    ctx.fillStyle = 'rgba(16,14,11,0.92)';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = '#6b6152';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+    ctx.strokeStyle = '#2c2820';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 6.5, y + 6.5, w - 13, h - 13);
+
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 21px ' + FONT;
+    ctx.fillStyle = GOLD;
+    ctx.fillText(name.toUpperCase() + ' IS LOADING', x + w / 2, y + 40);
+
+    ctx.textAlign = 'left';
+    for (let i = 0; i < a.stages.length; i++) {
+      const st = a.stages[i];
+      const ry = y + 68 + i * 38;
+      const shown = i < a.revealed;
+
+      ctx.font = '15px ' + FONT;
+      ctx.fillStyle = shown ? INK : '#4a4438';
+      ctx.fillText(st.title, x + 34, ry + 15);
+
+      // Quality bar.
+      const bx = x + 236, bw = 130;
+      ctx.fillStyle = '#15120e';
+      ctx.fillRect(bx, ry + 3, bw, 14);
+      if (shown) {
+        ctx.fillStyle = st.perfect ? '#e2c45a'
+          : st.q >= 0.85 ? '#7fae4e' : st.q >= 0.55 ? '#d0a03a' : '#c9502f';
+        ctx.fillRect(bx + 1, ry + 4, (bw - 2) * st.q, 12);
+      }
+      ctx.strokeStyle = '#5e5546';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx + 0.5, ry + 3.5, bw - 1, 13);
+
+      if (shown) {
+        ctx.font = 'bold 13px ' + FONT;
+        ctx.fillStyle = st.perfect ? '#e2c45a' : INK_DIM;
+        ctx.textAlign = 'right';
+        ctx.fillText(st.perfect ? 'PERFECT' : st.q >= 0.85 ? 'GOOD'
+          : st.q >= 0.55 ? 'FAIR' : st.q >= 0.25 ? 'POOR' : 'FUMBLED',
+          x + w - 30, ry + 15);
+        ctx.textAlign = 'left';
+      }
+    }
+    ctx.textAlign = 'left';
+  }
+
   drawBanner(text, sub, color) {
     const ctx = this.ctx;
     const y = WORLD_H / 2 - 70;

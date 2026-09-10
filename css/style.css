@@ -361,6 +361,42 @@ input[type="range"] {
 .map-stats { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-size: 11px; letter-spacing: 0.12em; color: var(--ink-faint); }
 .map-stats b { color: var(--ink); font-weight: 700; }
 
+.ai-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+}
+@media (max-width: 720px) { .ai-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.ai-card {
+  background: #0d0c09;
+  border: 1px solid var(--edge);
+  padding: 10px 11px 11px;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font);
+  color: var(--ink-dim);
+  transition: border-color 90ms linear, background 90ms linear;
+}
+.ai-card:hover { border-color: var(--edge-hot); background: #16150f; }
+.ai-card.selected { border-color: var(--gold); background: #242115; color: var(--ink); }
+.ai-card .ac-name {
+  display: block;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  color: inherit;
+  margin-bottom: 6px;
+}
+.ai-card .ac-blurb {
+  display: block;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+  min-height: 3em;
+}
+.ai-card.selected .ac-blurb { color: var(--ink-dim); }
+
 /* ------------------------------------------------------------ how to */
 
 .howto-grid {
