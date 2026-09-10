@@ -422,14 +422,16 @@ export class Game {
   }
 
   updateAim(dt) {
-    // Held-key acceleration so fine adjustment is possible but coarse
-    // adjustment is not tedious.
+    // Held-key acceleration. This is a game about half a degree, so the first
+    // second of a hold has to stay slow enough to stop on the number you want;
+    // the ramp then opens up so crossing the full range still takes about three
+    // seconds rather than being tedious. A tap alone nudges by a fixed step.
     const k = this.keyRepeat;
-    const accel = (held) => (held < 0.35 ? 1 : held < 1.1 ? 2.4 : 5.5);
-    if (k.up > 0) { k.up += dt; this.adjustAngle(22 * dt * accel(k.up)); }
-    if (k.down > 0) { k.down += dt; this.adjustAngle(-22 * dt * accel(k.down)); }
-    if (k.right > 0) { k.right += dt; this.adjustPower(0.19 * dt * accel(k.right)); }
-    if (k.left > 0) { k.left += dt; this.adjustPower(-0.19 * dt * accel(k.left)); }
+    const accel = (held) => (held < 0.4 ? 1 : held < 1.4 ? 2.2 : 4.0);
+    if (k.up > 0) { k.up += dt; this.adjustAngle(9 * dt * accel(k.up)); }
+    if (k.down > 0) { k.down += dt; this.adjustAngle(-9 * dt * accel(k.down)); }
+    if (k.right > 0) { k.right += dt; this.adjustPower(0.10 * dt * accel(k.right)); }
+    if (k.left > 0) { k.left += dt; this.adjustPower(-0.10 * dt * accel(k.left)); }
 
     this.turnRemaining = Math.max(0, (this.turnDeadline - performance.now()) / 1000);
     const secs = Math.ceil(this.turnRemaining);
