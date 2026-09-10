@@ -504,6 +504,28 @@ kbd {
 }
 .boot span { animation: pulse 1.3s ease-in-out infinite; }
 
+.boot-inner { max-width: min(520px, calc(100% - 48px)); text-align: center; }
+
+.boot-failed {
+  animation: none !important;
+  color: var(--rust);
+  font-size: 18px;
+  letter-spacing: 0.24em;
+}
+
+.boot-help {
+  margin-top: 22px;
+  text-align: left;
+  border: 1px solid var(--edge);
+  background: var(--panel);
+  padding: 18px 20px;
+  letter-spacing: normal;
+}
+.boot-help p { margin: 0 0 10px; font-size: 13px; line-height: 1.65; color: var(--ink-dim); }
+.boot-help p:last-child { margin-bottom: 0; }
+.boot-help b { color: var(--ink); }
+.boot-detail { font-size: 11px !important; color: var(--ink-faint) !important; word-break: break-all; }
+
 @keyframes pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {

@@ -116,10 +116,15 @@ rather than walk into it. Because the game ships as plain ES modules with no
 build step and GitHub Pages caches them for a few minutes, a returning player
 can end up with a fresh `index.html` running against a stale `physics.js`. Both
 sides would believe they agree while their trajectories differed in the third
-decimal place. So the handshake exchanges a fingerprint hashed from the actual
+decimal place. So the handshake exchanges a build stamp hashed from the actual
 loaded *source text* of the functions and tables that decide a shot - not a
 hand-maintained version constant, which would be useless precisely when the
 module holding it is the stale one. Mismatched builds get told to reload.
+
+(That module is `js/buildid.js`. It was briefly called `fingerprint.js`, which
+ad blockers block on sight - and since it is an ES module import, a blocked
+request took the whole game down with it. Worth knowing before naming anything
+in this project after something a filter list cares about.)
 
 ## Playing alone
 
@@ -199,7 +204,7 @@ js/
   art-env.js        pixel art: scenery, sky, HUD icons, terrain tiles
   pixelart.js       turns sprite data into canvases
   rng.js            seeded PRNG shared by both peers
-  fingerprint.js    build fingerprint, so mismatched peers refuse to start
+  buildid.js        build stamp, so mismatched peers refuse to start
 tools/
   verify.mjs        pre-deploy checks
   playtest.mjs      headless balance harness

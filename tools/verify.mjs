@@ -60,6 +60,30 @@ check('index.html', () => {
   return Math.round(html.length / 1024) + ' KB';
 });
 
+// A blocked request takes down the whole ES module graph, so a filename that
+// a filter list dislikes is not a cosmetic problem: it is a total outage for
+// every player running an ad blocker. This happened once, with fingerprint.js.
+check('no shipped file is named like something a blocker eats', () => {
+  const BAD = /(fingerprint|analytic|telemetry|tracking|tracker|advert|(^|[-_./])ads?([-_.]|$)|doubleclick|sponsor|popunder|prebid|gtag|gtm)/i;
+  const shipped = [];
+  for (const d of ['js', 'css']) {
+    for (const f of readdirSync(join(root, d))) shipped.push(d + '/' + f);
+  }
+  shipped.push('index.html');
+  const bad = shipped.filter((f) => BAD.test(f));
+  assert(bad.length === 0, 'filter lists will block: ' + bad.join(', '));
+  return shipped.length + ' files clear';
+});
+
+check('a failed boot is diagnosable rather than a dead screen', () => {
+  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  assert(html.includes('boot-help'), 'no boot failure panel');
+  assert(/setTimeout\(function \(\) \{\s*if \(!window\.__mortars\)/.test(html),
+    'no boot watchdog timer');
+  assert(html.includes("addEventListener('error'"), 'no resource error listener');
+  return 'watchdog present';
+});
+
 // ------------------------------------------------------- 2. sprites
 
 const { UNIT_PALETTES, UNIT_SPRITES } = await import('../js/art-units.js');

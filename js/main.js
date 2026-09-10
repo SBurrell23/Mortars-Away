@@ -8,7 +8,7 @@ import { Effects } from './effects.js';
 import { Game, ST } from './game.js';
 import { Net, LocalNet, PROTOCOL_VERSION } from './net.js';
 import { MAPS, mapById, WORLD_W, WORLD_H } from './maps.js';
-import { gameFingerprint } from './fingerprint.js';
+import { buildId } from './buildid.js';
 import { AI_LEVELS, aiLevelById } from './ai.js';
 import { randomSeed } from './rng.js';
 import * as sfx from './audio.js';
@@ -224,7 +224,7 @@ function sendLobbyState() {
   if (!app.net || app.net.local || !app.isHost) return;
   app.net.send({
     t: 'lobby', mapId: app.selectedMap, hostName: app.myName,
-    v: PROTOCOL_VERSION, fp: gameFingerprint(),
+    v: PROTOCOL_VERSION, fp: buildId(),
   });
 }
 
@@ -347,7 +347,7 @@ function wireNet(net) {
 function onNetMessage(msg) {
   switch (msg.t) {
     case 'hello':
-      if (msg.v !== PROTOCOL_VERSION || (msg.fp && msg.fp !== gameFingerprint())) {
+      if (msg.v !== PROTOCOL_VERSION || (msg.fp && msg.fp !== buildId())) {
         // One side is running stale cached modules. Refuse rather than start a
         // match that would drift apart shot by shot.
         app.net.send({ t: 'versionmismatch' });
@@ -365,7 +365,7 @@ function onNetMessage(msg) {
 
     case 'lobby':
       if (msg.v !== undefined && (msg.v !== PROTOCOL_VERSION
-          || (msg.fp && msg.fp !== gameFingerprint()))) {
+          || (msg.fp && msg.fp !== buildId()))) {
         showVersionMismatch();
         return;
       }
@@ -685,7 +685,7 @@ function wireUi() {
       await net.join(code);
       app.isHost = false;
       app.solo = false;
-      net.send({ t: 'hello', name: app.myName, v: PROTOCOL_VERSION, fp: gameFingerprint() });
+      net.send({ t: 'hello', name: app.myName, v: PROTOCOL_VERSION, fp: buildId() });
       enterLobby(false, code);
     } catch (err) {
       $('join-error').textContent = err.message;

@@ -197,10 +197,63 @@
     </div>
   </div>
 
-  <div class="boot" id="boot"><span>MUSTERING</span></div>
+  <div class="boot" id="boot">
+    <div class="boot-inner">
+      <span id="boot-msg">MUSTERING</span>
+      <div class="boot-help hidden" id="boot-help">
+        <p><b>The game could not start.</b></p>
+        <p>The most likely cause is a browser extension. Ad blockers and privacy
+          extensions block scripts by filename, and one blocked file stops the
+          whole game loading. Try pausing the extension for this page and
+          reloading.</p>
+        <p>Failing that: check you are online, and that a corporate network or
+          VPN is not filtering the connection.</p>
+        <p class="boot-detail" id="boot-detail"></p>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="module" src="js/main.js"></script>
+
+<!--
+  Boot watchdog. The game is a graph of ES modules, so if any single one fails
+  to load - blocked by an extension, dropped by a flaky network, filtered by a
+  proxy - nothing runs at all and the player is left staring at MUSTERING with
+  no idea why. This turns that dead end into something diagnosable.
+-->
+<script>
+(function () {
+  var shown = false;
+
+  function fail(detail) {
+    if (shown) return;
+    shown = true;
+    var msg = document.getElementById('boot-msg');
+    var help = document.getElementById('boot-help');
+    var det = document.getElementById('boot-detail');
+    if (msg) { msg.textContent = 'UNABLE TO DEPLOY'; msg.className = 'boot-failed'; }
+    if (help) help.classList.remove('hidden');
+    if (det && detail) det.textContent = detail;
+  }
+
+  // Resource load failures fire on the capture phase and do not bubble.
+  window.addEventListener('error', function (e) {
+    var t = e.target;
+    if (t && t !== window && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) {
+      fail('Blocked or unreachable: ' + (t.src || t.href || 'unknown file'));
+    }
+  }, true);
+
+  window.addEventListener('unhandledrejection', function (e) {
+    if (!window.__mortars) fail(String((e && e.reason) || 'module load rejected'));
+  });
+
+  setTimeout(function () {
+    if (!window.__mortars) fail('Timed out waiting for the game modules to load.');
+  }, 8000);
+})();
+</script>
 </body>
 </html>
